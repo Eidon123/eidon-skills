@@ -1,4 +1,0 @@
-interface:
-  display_name: "Eidon Skills"
-  short_description: "Route Eidon workspace and skill management tasks"
-  default_prompt: "Use $eds to route this Agent workspace task to the right Eidon skill."

@@ -1,26 +1,30 @@
 # Eidon Skills
 
-Eidon Skills (EDS) is a growing collection of Agent workspace tools. Use `/eds` as the routing entry.
+Eidon Skills (EDS) provides cross-host Agent workspace migration and skill lifecycle management.
 
 ## Included Skills
 
-- `eds`: routes EDS requests to the appropriate leaf skill.
-- `eds-agent-migration`: audits and migrates multi-host Agent rules, skill sources, bridges, and symlinks.
+- `eds-agent-migration`: migrates shared rules and host adapters between Agent environments, then coordinates skill reconciliation with the manager.
+- `eds-skill-manager`: inventories, normalizes, installs, updates, removes, and repairs global and project skills.
+
+Invoke either leaf skill directly. EDS does not publish a routing skill at this stage.
 
 ## Install
 
+Install every published EDS skill through the universal Agent Skills target:
+
 ```bash
-npx -y skills add Eidon123/eidon-skills -g --all
+npx -y skills add Eidon123/eidon-skills -g -a universal -s '*' -y
 ```
+
+After installation, use `eds-skill-manager` to verify the host discovery entries required by the local Agent environments.
 
 ## Update
 
-Run the same install command again, or update all globally managed skills:
-
 ```bash
-npx skills update -g
+npx skills update -g -y
 ```
 
 ## Version
 
-Current release: `v0.1.0`
+Current release: `v0.2.0`

@@ -1,4 +1,0 @@
-interface:
-  display_name: "EDS Agent Migration"
-  short_description: "Audit and migrate multi-agent skill workspaces"
-  default_prompt: "Use $eds-agent-migration to audit and migrate this Agent workspace safely."
