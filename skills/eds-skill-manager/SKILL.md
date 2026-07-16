@@ -1,12 +1,12 @@
 ---
 name: eds-skill-manager
 description: |-
-  Eidon Skills (EDS) 的结构管理器。用于盘点全局与当前项目的 skill，规范化目录和宿主入口，创建或维护唯一的全局 SOURCE_OF_TRUTH.md，以及安装、更新、移除、修复 skill 或多 skill 套件。用户提到 skill 清单、skill 放在哪里、全局/项目 skill、重复副本、跨宿主 skill 入口统一、软链接、bridge、lock、upstream、套件更新、入口损坏、SOT 或 EDS skill 管理时使用；即使涉及多个宿主，只要任务仅限 skill 层也使用本 skill。无明确动作时默认只读盘点全局和当前项目；不评价 skill 的内容质量、安全性、使用频率或业务价值。
+  Eidon Skills (EDS) 的结构管理器。用于盘点全局与当前项目的 skill，规范化目录和 skill 发现入口，创建或维护唯一的全局 SOURCE_OF_TRUTH.md，以及安装、更新、移除、修复 skill 或多 skill 套件；也可在完整 skill 审计后按用户选择维护可选的 workspace 路径注册。用户提到 skill 清单、skill 放在哪里、全局/项目 skill、重复副本、跨宿主 skill 入口统一、软链接、bridge、lock、upstream、套件更新、入口损坏、SOT、workspace 路径注册或 EDS skill 管理时使用。无明确动作时默认只读盘点全局和当前项目；不评价 skill 的内容质量、安全性、使用频率或业务价值。
 ---
 
 # EDS Skill Manager
 
-管理 Agent skill 的结构关系。自己完成盘点、normalize、SOT、install、update、remove 和 repair；不要把核心步骤转交给其他 skill。
+管理 Agent skill 的结构关系。自己完成盘点、normalize、SOT、install、update、remove 和 repair；skill 生命周期始终是核心，workspace registry 只是显式选择后的可选结构能力。
 
 ## 边界
 
@@ -16,12 +16,14 @@ description: |-
 - 开发源、发布上游、安装副本、宿主入口之间的关系。
 - suite 成员、安装管理器、lock、软链接、bridge 和发现路径。
 - 全局目录、项目目录、外部托管目录、宿主专属目录和历史残留。
+- 用户明确选择登记的 workspace 根路径、规则入口和生命周期状态。
 
 不要处理：
 
 - skill 是否有用、是否低频、是否值得保留。
 - skill 正文的业务质量、安全审计、广告或恶意行为检测。
 - 未经用户要求的 prompt 改写或功能重构。
+- workspace 的业务内容、模块索引、跨系统同步逻辑或读写授权。
 
 遇到这些需求时，说明本 skill 只能提供结构证据，把内容判断留给相应能力或用户。
 
@@ -34,19 +36,22 @@ description: |-
 `<用户确认的全局-skill-目录>/SOURCE_OF_TRUTH.md`
 
 - 不猜测全局 skill 目录。
-- 已有一个有效 SOT 时，先读取并验证其所在目录与自述路径一致。
-- 找到多个 SOT 候选时，全部视为冲突候选；用户选定前禁止写入。
+- 创建、迁移、修复 SOT 或处理 workspace registry 前，完整读取 `references/source-of-truth-contract.md`。
+- 已有一个有效 SOT 时，先读取并验证其物理身份、schema、authority domain、所在目录与自述路径一致。
+- 先用 `realpath`/inode 合并同一物理文件的逻辑别名。只有不同物理文件的作用域重叠且 `authority-domain` 相同时才构成冲突。
+- 项目业务使用的同名 `SOURCE_OF_TRUTH.md` 属于其他 authority domain，不能当作全局 EDS SOT 冲突。
 - 没有 SOT 时，先完成全局和当前项目的全量只读盘点，再请用户确认哪个目录作为全局 skill 目录。
-- 其他项目说明、catalog 或宿主清单只能是派生视图或历史输入，不能成为第二个 SOT。
+- `SOURCE_OF_TRUTH.md` 由本 skill 独占写入。Migration 和其他 Agent 只能提交证据或已验证映射。
 
-SOT 至少记录：
+SOT 使用 `eds-sot/v1`，至少记录：
 
-1. 已确认的物理全局 skill 目录和默认项目目录规则。
-2. 全局 skill、suite、外部托管项、默认项目约定和非标准项目例外。
-3. 每项的作用域、生命周期角色、管理方式、upstream/lock 和宿主入口。
-4. 已验证的宿主发现机制、例外、保留的单宿主项和不恢复项。
-5. Migration 提供的公共规则、宿主适配层、加载优先级和规则入口约定；只记录映射和非标准例外，不复制规则正文。
-6. 最近验证时间、未解决漂移和维护规则。
+1. `Contract`：schema、scope、authority domain、canonical path、维护者和读取条件。
+2. `Intended Structure`：用户批准的根目录、管理策略、身份关系、例外、tombstone 和可选 registry 政策。
+3. `Verified State`：带 evidence/status/verified-at 的观察、未管理对象和漂移。
+
+不要把现场观察静默写成意图。预期对象缺失时保留 Intended 并记录 drift；发现额外对象时记录 unmanaged，获得用户批准后才能进入 Intended。证据、状态与验收等级不变时不要刷新 `verified-at`。
+
+完整成员清单、成员数量、全量 hash 和其他可从目录、lock 或 upstream 重建的 inventory 只在当前响应中生成，不持久化，也不创建 `CATALOG.md`。
 
 ### 默认项目目录
 
@@ -88,6 +93,8 @@ SOT 至少记录：
 3. 不创建 SOT，不移动目录，不修链接，不更新任何包。
 4. 给出下一步建议，但等待用户选择动作。
 
+只有顶层完整审计闭环且结果不是 partial/failed 时，才根据 SOT 中的 registry 状态提供一次可选提示。普通 inventory、嵌套执行和失败结果不提示，也不扫描其他 workspace。
+
 只读操作不需要确认。任何创建、修改、移动、覆盖、安装、更新、删除或修复都必须先预检并获得确认。
 
 ## 全阶段流式进度
@@ -109,6 +116,7 @@ SOT 至少记录：
 - `inventory`：只读盘点。
 - `normalize`：统一结构、命名和入口关系。
 - `sot`：建立、迁移或修订唯一 SOT。
+- `workspace-registry`：在用户明确选择后发现、登记、验证或修复 workspace 路径。
 - `install`：安装 skill 或 suite。
 - `update`：更新已安装项或 suite。
 - `remove`：移除指定结构层。
@@ -139,7 +147,7 @@ SOT 至少记录：
 
 ### Phase 3：全量盘点
 
-有 SOT 时，从 SOT 清单出发，反向检查实际文件系统和管理器状态。
+有 SOT 时，从 SOT 契约出发，反向检查实际文件系统和管理器状态。
 
 无 SOT 时，完整盘点：
 
@@ -151,7 +159,30 @@ SOT 至少记录：
 
 “全量”指沿已发现的目录、lock、入口和 upstream 关系把结构闭环，不指无边界扫描整个用户磁盘。
 
+全量 skill 盘点不包含 workspace discovery。不得借 registry 功能扫描当前项目的同级目录、home、Obsidian、iCloud 或其他未经用户确认的根。
+
 只读取完成结构判断所需的 frontmatter、指针和安装元数据；不要分析 skill 正文含义。
+
+### Phase 3.5：可选 workspace registry
+
+仅在用户选择“现在建立”或明确请求 registry 动作后执行：
+
+1. 确认允许发现的有限候选根；没有确认根时不跨 workspace 扫描。
+2. 只读检查候选根、规则入口、逻辑路径、realpath 和可复核用途证据。
+3. 列出候选和不确定项，让用户逐项选择正式登记对象。
+4. 把选中项写入精确预检；发现不等于登记，登记不等于读写授权。
+5. 写入后反向验证根路径和规则入口；未回滚且仍保留的失败项标记为 degraded，全部回滚则恢复 not-configured，不伪造 active。
+
+registry 的有效状态由两层推导，不在两处重复保存：Intended 的 `setup-decision` 只取 `undecided` 或 `declined-permanently`；若为永久拒绝，有效状态就是 `declined-permanently`，否则读取 Verified 的 operational status：
+
+- `not-configured`：在下一次符合资格的完整审计后提示。
+- `configuring`：精确 registry manifest 已批准并开始写入，但验证尚未完成。
+- `active`：已登记项通过约定的结构验证。
+- `degraded`：获批登记首次验证失败但仍保留，或已有 active 登记发生漂移；只提示修复，不重新询问是否建立。
+
+选择“现在建立”只进入有限发现和精确预检；registry manifest 获批后的第一次 SOT 写入才在 Verified 持久化 `configuring`，全部选中项验证通过后转为 `active`，失败时按回滚后的事实记录 `not-configured` 或 `degraded`。选择“以后再说”保持 `setup-decision: undecided` 和 `not-configured`。永久拒绝只能在获批写入可用 SOT 后把 Intended 改为 `setup-decision: declined-permanently`，不依赖模型记忆或另建偏好文件。显式重置把该决策改回 `undecided`，有效状态恢复为 Verified 的 operational status。
+
+SOT 不存在不是一种 registry 状态，也不能为了记住选择而跳过 SOT 创建流程。嵌套 Manager 不直接提示，只把 offer 状态返回顶层调用者；顶层调用者只有在自己的整体任务也满足顶层完整 skill 审计资格时才能展示三项选择，否则只报告状态和能力。普通 inventory 不后台巡检登记项；只有显式 registry 验证或相关 workspace 实际使用发现漂移时，才把 `active` 转为 `degraded`。
 
 ### Phase 4：结构分类
 
@@ -212,6 +243,7 @@ SOT 至少记录：
 - 将运行的安装器或官方命令及其作用域。
 - suite 的当前成员、上游正式成员、新增项和退出项。
 - lock、SOT 和每个宿主入口的预期变化。
+- SOT 当前 hash、拟修改 section、保留的未知字段和写前冲突检查方式。
 - 备份、回滚方式、验证方式和不可逆风险。
 - 本批次中的普通项与拆出的复杂项。
 
@@ -237,6 +269,8 @@ SOT 至少记录：
 
 执行前备份所有将修改、移动、覆盖或删除的路径，并保存恢复清单。软链接备份链接本身及其解析目标说明，不递归复制目标；备份放在宿主扫描目录之外并验证可读。备份失败立即停止。使用对应安装管理器维护其 lock；不要手工伪造或修改 lock。操作外部套件时只使用已验证的官方流程。
 
+写入 SOT 前重新读取并比较预检 hash。内容发生变化时废弃原预检并重新审计，不覆盖其他 Agent 的并发修改。
+
 ### Phase 7：验证并更新 SOT
 
 从最终文件系统反向验证：
@@ -248,7 +282,7 @@ SOT 至少记录：
 - 项目 skill 仍属于项目，外部托管项没有被收进标准目录。
 - 没有新增同名分叉、悬空入口、孤儿 lock 或未说明的完整副本。
 
-结构验证通过后再更新唯一 SOT，使其描述已验证的实际状态。写入后重新读取 SOT，并逐项对照最终路径、入口和管理器状态；反向验证通过后才能报告成功。部分失败时优先安全回滚；无法回滚时在 SOT 和结果中明确记录未解决漂移，绝不写成成功。
+除 workspace registry 的两阶段状态事务外，结构验证通过后再按 contract 更新唯一 SOT：用户批准的变化进入 Intended，现场证据进入 Verified。registry 按已批准 manifest 先原子写入 Intended 登记与 Verified `configuring`，重新读取确认并记录新的 transaction hash 后再验证目标；第二次写入前必须以该新 hash 做 CAS 检查，匹配后才原子写入 `active`、`degraded` 或回滚后的 `not-configured`，不匹配则停止并重审。任何阶段都不能把 `configuring` 报告成成功。写入后重新读取 SOT，并逐项对照最终路径、入口和管理器状态；使用相同证据重跑时不得产生 diff。反向验证通过后才能报告成功。部分失败时优先安全回滚；无法回滚时记录未解决漂移，绝不写成成功。
 
 验收分为三级：目标宿主完成真实发现冒烟测试才是 `完整完成`；仅验证发现机制和静态入口时是 `结构可运行，宿主待实测`；仍有未知发现机制时只能报告 `仅审计/部分完成`。不得把后两级写成完整完成。
 
@@ -266,9 +300,19 @@ SOT 至少记录：
 ### SOT
 
 - 无 SOT：全量盘点 -> 提议全局目录 -> 用户确认 -> 创建 SOT -> 反向验证。
-- 有单一 SOT：先查漂移，再按验证结果更新。
-- 有多个候选：列出差异和引用关系，用户选择后再合并或降级其他文件。
-- SOT 只记录结构事实和维护契约，不复制 skill 正文。
+- 有 legacy SOT：记录源 hash，从现场重算证据，迁移明确政策与例外；遇到无法分类的章节时停止询问，不静默丢弃或保留为权威快照。
+- 有有效 SOT：先查漂移，再按 Intended/Verified 规则更新；相同证据必须幂等。
+- 有同名文件：先按物理身份和 authority domain 分类，只有真实同域冲突才要求用户选择。
+- SOT 只记录不可安全重建的结构意图、必要映射、例外和带证据状态，不复制正文或派生 inventory。
+
+### Workspace Registry
+
+- registry 不属于普通 skill 审计的成功标准；未配置时可以正常完成 skill 管理。
+- 提示选项为“现在建立 / 以后再说 / 永久不提示”，一次符合资格的完整审计最多提示一次。
+- registry policy 的用户决策只写 Intended，运行与漂移状态只写 Verified；有效状态按上述优先级推导，不复制成第三个字段。
+- workspace 的 Intended 字段为稳定 ID、名称/别名、用户确认的绝对逻辑根、一句话用途、规则入口和生命周期意图；解析后的 realpath、status、evidence 与 verified-at 只写入 Verified。
+- 进入已登记 workspace 后先读取其本地规则。SOT 不覆盖业务真源、项目规则、宿主优先级或权限边界。
+- 若跨宿主规则尚未迁移，只把 `eds-agent-migration` 作为明确的可选下一步；不自动启动，也不影响本轮 skill 管理结果。
 
 ### Install
 
@@ -308,6 +352,7 @@ SOT 至少记录：
 - 按作用域分组的 skill/suite 数量。
 - 每个异常的结构分类、证据、影响和建议动作。
 - SOT 状态及下一步需要用户决定的事项。
+- registry 状态、是否满足提示资格，以及是否仅具备能力但尚未激活。
 
 写入完成至少输出：
 
@@ -315,12 +360,14 @@ SOT 至少记录：
 - 写入和删除的路径。
 - 验证结果与剩余漂移。
 - 唯一 SOT 的路径和最近验证状态。
+- 本次更新的 Intended/Verified section、保留的 drift 和 registry 激活状态。
 
 不要把“发现数量相同”当作验证成功。验证的是身份关系、解析目标、管理状态和宿主可发现性。
 
 ## 禁止事项
 
 - 不经全量盘点就创建 SOT。
+- 不因文件同名而跳过物理身份和 authority-domain 判断。
 - 不硬编码未经验证的跨宿主发现路径。
 - 不把逻辑入口路径误称为物理全局目录。
 - 不直接编辑 lock 管理的安装副本或手工伪造 lock。
@@ -329,3 +376,7 @@ SOT 至少记录：
 - 不在未确认时创建、移动、覆盖或删除任何结构。
 - 不把内容评价包装成结构分类。
 - 不在 SOT 中记录未经验证的成功状态。
+- 不把派生 inventory、完整成员清单或计数写入 SOT，也不创建持久化 Catalog。
+- 不在未获选择时扫描或登记其他 workspace。
+- 不把 workspace 登记解释为业务同步、读写授权或全局规则覆盖。
+- 不把本机个人路径、workspace 名称、凭据或实例数据写入可发布的 skill、reference 或 README。
